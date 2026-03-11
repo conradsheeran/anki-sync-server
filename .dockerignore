@@ -1,0 +1,10 @@
+.git
+.gitignore
+.github
+README*
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+target
