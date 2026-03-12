@@ -35,8 +35,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/src/target \
-    cargo build --release --bin anki-sync-server
-RUN strip /src/target/release/anki-sync-server
+    cargo build --release --bin anki-sync-server \
+    && cp /src/target/release/anki-sync-server /anki-sync-server \
+    && strip /anki-sync-server
 
 FROM ${DEBIAN_IMAGE} AS runtime
 ARG SOURCE_REPO
@@ -54,7 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN useradd -m -u 10001 anki
-COPY --from=builder /src/target/release/anki-sync-server /usr/local/bin/anki-sync-server
+COPY --from=builder /anki-sync-server /usr/local/bin/anki-sync-server
 RUN mkdir -p /data && chown anki:anki /data
 USER anki
 ENV SYNC_HOST=0.0.0.0
