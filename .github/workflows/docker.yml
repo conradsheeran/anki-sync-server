@@ -7,9 +7,16 @@ on:
   pull_request:
     branches: ["main"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
+
+env:
+  ANKI_VERSION_DEFAULT: "25.02.5"
 
 jobs:
   build:
@@ -32,22 +39,28 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve Anki version
+        id: anki
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ env.ANKI_VERSION_DEFAULT }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=tag
-
-      - name: Build date
-        id: build_date
-        run: echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
@@ -57,7 +70,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            ANKI_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '25.02.5' }}
+            ANKI_VERSION=${{ steps.anki.outputs.version }}
             SOURCE_REPO=${{ github.repository }}
             VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.build_date.outputs.date }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
