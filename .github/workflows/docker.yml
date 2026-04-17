@@ -16,7 +16,7 @@ permissions:
   packages: write
 
 env:
-  ANKI_VERSION_DEFAULT: "25.02.5"
+  ANKI_VERSION_DEFAULT: "25.09.2"
 
 jobs:
   build:
