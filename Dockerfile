@@ -6,7 +6,6 @@ ARG DEBIAN_IMAGE=debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de8
 
 FROM ${RUST_IMAGE} AS base
 ARG ANKI_VERSION=25.02.5
-ARG CARGO_CHEF_VERSION=0.1.67
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     cmake \
@@ -14,30 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libssl-dev \
     git \
-    && cargo install --locked --version ${CARGO_CHEF_VERSION} cargo-chef \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-FROM base AS planner
-WORKDIR /src
-RUN git clone --depth 1 --branch ${ANKI_VERSION} https://github.com/ankitects/anki.git .
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo chef prepare --recipe-path recipe.json --bin anki-sync-server
-
 FROM base AS builder
-WORKDIR /src
-COPY --from=planner /src /src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/src/target \
-    cargo chef cook --recipe-path recipe.json --release --bin anki-sync-server
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/src/target \
-    cargo build --release --bin anki-sync-server \
-    && strip target/release/anki-sync-server \
-    && cp target/release/anki-sync-server /usr/local/bin/anki-sync-server
+    cargo install --locked --git https://github.com/ankitects/anki.git --tag ${ANKI_VERSION} anki-sync-server \
+    && test "$(stat -c%s /usr/local/cargo/bin/anki-sync-server)" -gt 1000000 \
+    && strip /usr/local/cargo/bin/anki-sync-server
 
 FROM ${DEBIAN_IMAGE} AS runtime
 ARG SOURCE_REPO
@@ -55,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN useradd -m -u 10001 anki
-COPY --from=builder /usr/local/bin/anki-sync-server /usr/local/bin/anki-sync-server
+COPY --from=builder /usr/local/cargo/bin/anki-sync-server /usr/local/bin/anki-sync-server
 RUN mkdir -p /data && chown anki:anki /data
 USER anki
 ENV SYNC_HOST=0.0.0.0 \
