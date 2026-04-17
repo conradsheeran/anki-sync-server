@@ -38,4 +38,22 @@ env | grep -E '^SYNC_' | sed -E 's/(SYNC_USER[0-9]+=[^:]*:).*/\1***/' | sed 's/^
 echo "[entrypoint] data dir listing:"
 ls -la "$DATA_DIR" | sed 's/^/[entrypoint]   /'
 echo "[entrypoint] starting anki-sync-server on ${SYNC_HOST:-0.0.0.0}:${SYNC_PORT:-8080} base=$DATA_DIR"
-exec gosu "$ANKI_UID:$ANKI_GID" "$@"
+
+LOG_FILE="/tmp/anki-sync-server.log"
+: > "$LOG_FILE"
+
+set +e
+gosu "$ANKI_UID:$ANKI_GID" "$@" >"$LOG_FILE" 2>&1
+rc=$?
+set -e
+
+echo "[entrypoint] anki-sync-server exited with code $rc"
+if [ -s "$LOG_FILE" ]; then
+    echo "[entrypoint] ----- captured stdout/stderr -----"
+    sed 's/^/[anki] /' "$LOG_FILE"
+    echo "[entrypoint] ----- end of captured output -----"
+else
+    echo "[entrypoint] (no stdout/stderr produced)"
+fi
+
+exit "$rc"
