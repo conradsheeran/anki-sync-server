@@ -5,7 +5,7 @@ ARG RUST_IMAGE=rust:${RUST_VERSION}-slim-bookworm@sha256:1829c432be4a592f3021501
 ARG DEBIAN_IMAGE=debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421
 
 FROM ${RUST_IMAGE} AS base
-ARG ANKI_VERSION=25.09.2
+ARG ANKI_VERSION=25.02.5
 ARG CARGO_CHEF_VERSION=0.1.67
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
@@ -51,20 +51,17 @@ LABEL org.opencontainers.image.source="https://github.com/${SOURCE_REPO}" \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
-    gosu \
-    tini \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN useradd -m -u 10001 anki
 COPY --from=builder /usr/local/bin/anki-sync-server /usr/local/bin/anki-sync-server
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /data && chown anki:anki /data
+RUN mkdir -p /data && chown anki:anki /data
+USER anki
 ENV SYNC_HOST=0.0.0.0 \
     SYNC_PORT=8080 \
     SYNC_BASE=/data \
     RUST_LOG=info \
     RUST_BACKTRACE=1
 EXPOSE 8080
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["anki-sync-server"]
