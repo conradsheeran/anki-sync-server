@@ -51,15 +51,20 @@ LABEL org.opencontainers.image.source="https://github.com/${SOURCE_REPO}" \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
+    gosu \
+    tini \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN useradd -m -u 10001 anki
 COPY --from=builder /usr/local/bin/anki-sync-server /usr/local/bin/anki-sync-server
-RUN mkdir -p /data && chown anki:anki /data
-USER anki
-ENV SYNC_HOST=0.0.0.0
-ENV SYNC_PORT=8080
-ENV SYNC_BASE=/data
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && mkdir -p /data && chown anki:anki /data
+ENV SYNC_HOST=0.0.0.0 \
+    SYNC_PORT=8080 \
+    SYNC_BASE=/data \
+    RUST_LOG=info \
+    RUST_BACKTRACE=1
 EXPOSE 8080
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
 CMD ["anki-sync-server"]
