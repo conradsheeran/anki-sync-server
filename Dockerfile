@@ -5,7 +5,7 @@ ARG RUST_IMAGE=rust:${RUST_VERSION}-slim-bookworm@sha256:1829c432be4a592f3021501
 ARG DEBIAN_IMAGE=debian:bookworm-slim@sha256:74d56e3931e0d5a1dd51f8c8a2466d21de84a271cd3b5a733b803aa91abf4421
 
 FROM ${RUST_IMAGE} AS base
-ARG ANKI_VERSION=25.02.5
+ARG ANKI_VERSION=25.09.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler \
     cmake \
