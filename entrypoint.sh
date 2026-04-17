@@ -33,5 +33,9 @@ case "$SYNC_USER1" in
         ;;
 esac
 
+echo "[entrypoint] SYNC env:"
+env | grep -E '^SYNC_' | sed -E 's/(SYNC_USER[0-9]+=[^:]*:).*/\1***/' | sed 's/^/[entrypoint]   /'
+echo "[entrypoint] data dir listing:"
+ls -la "$DATA_DIR" | sed 's/^/[entrypoint]   /'
 echo "[entrypoint] starting anki-sync-server on ${SYNC_HOST:-0.0.0.0}:${SYNC_PORT:-8080} base=$DATA_DIR"
-exec gosu "$ANKI_UID:$ANKI_GID" anki-sync-server "$@"
+exec gosu "$ANKI_UID:$ANKI_GID" "$@"
